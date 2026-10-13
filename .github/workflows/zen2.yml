@@ -25,16 +25,36 @@ env:
   KERNEL_REF_DEFAULT: 7.1/cachy
   CONFIG_URL: https://raw.githubusercontent.com/CachyOS/linux-cachyos/master/linux-cachyos-eevdf/config
 
-# Only the selected variant(s) run; skipped matrix entries are free.
 jobs:
+  # The variant list is computed here because a job-level 'if' cannot see the
+  # matrix context; the dispatch input is only available on workflow_dispatch.
+  select:
+    name: Select variants
+    runs-on: ubuntu-24.04
+    outputs:
+      variants: ${{ steps.pick.outputs.variants }}
+    steps:
+      - id: pick
+        env:
+          EVENT: ${{ github.event_name }}
+          WANT: ${{ inputs.variant }}
+        run: |
+          if [ "${EVENT}" != workflow_dispatch ] || [ -z "${WANT}" ] || [ "${WANT}" = both ]; then
+            variants='["amd","generic"]'
+          else
+            variants="[\"${WANT}\"]"
+          fi
+          echo "variants=${variants}" >> "$GITHUB_OUTPUT"
+          echo "Building variants: ${variants}"
+
   build:
     name: Build kernel (${{ matrix.variant }})
+    needs: [select]
     runs-on: ubuntu-24.04
-    if: github.event_name != 'workflow_dispatch' || inputs.variant == 'both' || inputs.variant == matrix.variant
     strategy:
       fail-fast: false
       matrix:
-        variant: [amd, generic]
+        variant: ${{ fromJSON(needs.select.outputs.variants) }}
         include:
           - variant: amd
             suffix: "-cachyos-zen2-eevdf-gcc"
@@ -79,15 +99,14 @@ jobs:
 
   arch:
     name: Arch Linux package (${{ matrix.variant }})
-    needs: [build]
+    needs: [select, build]
     runs-on: ubuntu-24.04
     container:
       image: archlinux:latest
-    if: github.event_name != 'workflow_dispatch' || inputs.variant == 'both' || inputs.variant == matrix.variant
     strategy:
       fail-fast: false
       matrix:
-        variant: [amd, generic]
+        variant: ${{ fromJSON(needs.select.outputs.variants) }}
         include:
           - variant: amd
             pkg_name: linux-cachyos-zen2-eevdf-gcc
@@ -118,13 +137,12 @@ jobs:
 
   deb:
     name: Ubuntu/Debian package (${{ matrix.variant }})
-    needs: [build]
+    needs: [select, build]
     runs-on: ubuntu-24.04
-    if: github.event_name != 'workflow_dispatch' || inputs.variant == 'both' || inputs.variant == matrix.variant
     strategy:
       fail-fast: false
       matrix:
-        variant: [amd, generic]
+        variant: ${{ fromJSON(needs.select.outputs.variants) }}
         include:
           - variant: amd
             pkg_name: linux-cachyos-zen2-eevdf-gcc
