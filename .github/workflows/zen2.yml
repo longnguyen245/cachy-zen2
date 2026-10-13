@@ -1,18 +1,18 @@
-name: Build CachyOS Zen2 EEVDF Kernel
+name: Build CachyOS EEVDF Kernel
 
 on:
   workflow_dispatch:
     inputs:
       kernel_ref:
-        description: "CachyOS/linux branch or tag to build (e.g. cachyos-7.1.8-1)"
+        description: "CachyOS/linux branch or tag to build (e.g. 7.1/cachy)"
         required: false
         default: ""
-      compiler:
-        description: "Which compiler variant(s) to build"
+      variant:
+        description: "Which target variant(s) to build"
         required: false
         default: "both"
         type: choice
-        options: [both, clang, gcc]
+        options: [both, amd, generic]
   push:
     branches: [master]
     tags: ["cachyos-*"]
@@ -22,35 +22,32 @@ permissions:
 
 env:
   KERNEL_REPO: https://github.com/CachyOS/linux.git
-  KERNEL_REF_DEFAULT: master
+  KERNEL_REF_DEFAULT: 7.1/cachy
   CONFIG_URL: https://raw.githubusercontent.com/CachyOS/linux-cachyos/master/linux-cachyos-eevdf/config
-  LLVM_VERSION: "23.1.2"
-  LLVM_DIR: "/opt/llvm"
 
 # Only the selected variant(s) run; skipped matrix entries are free.
 jobs:
   build:
-    name: Build kernel (${{ matrix.compiler }})
+    name: Build kernel (${{ matrix.variant }})
     runs-on: ubuntu-24.04
-    if: github.event_name != 'workflow_dispatch' || inputs.compiler == 'both' || inputs.compiler == matrix.compiler
+    if: github.event_name != 'workflow_dispatch' || inputs.variant == 'both' || inputs.variant == matrix.variant
     strategy:
       fail-fast: false
       matrix:
-        compiler: [clang, gcc]
+        variant: [amd, generic]
         include:
-          - compiler: clang
-            suffix: "-cachyos-zen2-eevdf"
-            pkg_name: linux-cachyos-zen2-eevdf
-            make_args: "LLVM=1"
-          - compiler: gcc
+          - variant: amd
             suffix: "-cachyos-zen2-eevdf-gcc"
             pkg_name: linux-cachyos-zen2-eevdf-gcc
-            make_args: ""
+            target_desc: "AMD Zen 2"
+          - variant: generic
+            suffix: "-cachyos-eevdf-gcc"
+            pkg_name: linux-cachyos-eevdf-gcc
+            target_desc: "generic x86-64"
     env:
-      COMPILER: ${{ matrix.compiler }}
+      VARIANT: ${{ matrix.variant }}
       KERNEL_SUFFIX: ${{ matrix.suffix }}
       PKG_NAME: ${{ matrix.pkg_name }}
-      MAKE_ARGS: ${{ matrix.make_args }}
 
     steps:
       - uses: actions/checkout@v4
@@ -74,31 +71,34 @@ jobs:
       - name: Upload kernel build
         uses: actions/upload-artifact@v4
         with:
-          name: build-${{ matrix.compiler }}
+          name: build-${{ matrix.variant }}
           path: |
             kernel/kernel-root.tar.zst
             kernel/headers-root.tar.zst
           compression-level: 0
 
   arch:
-    name: Arch Linux package (${{ matrix.compiler }})
+    name: Arch Linux package (${{ matrix.variant }})
     needs: [build]
     runs-on: ubuntu-24.04
     container:
       image: archlinux:latest
-    if: github.event_name != 'workflow_dispatch' || inputs.compiler == 'both' || inputs.compiler == matrix.compiler
+    if: github.event_name != 'workflow_dispatch' || inputs.variant == 'both' || inputs.variant == matrix.variant
     strategy:
       fail-fast: false
       matrix:
-        compiler: [clang, gcc]
+        variant: [amd, generic]
         include:
-          - compiler: clang
-            pkg_name: linux-cachyos-zen2-eevdf
-          - compiler: gcc
+          - variant: amd
             pkg_name: linux-cachyos-zen2-eevdf-gcc
+            target_desc: "AMD Zen 2"
+          - variant: generic
+            pkg_name: linux-cachyos-eevdf-gcc
+            target_desc: "generic x86-64"
     env:
-      COMPILER: ${{ matrix.compiler }}
+      VARIANT: ${{ matrix.variant }}
       PKG_NAME: ${{ matrix.pkg_name }}
+      TARGET_DESC: ${{ matrix.target_desc }}
     steps:
       - name: Install packaging dependencies
         run: sudo pacman -S --noconfirm --needed base-devel git zstd
@@ -107,32 +107,35 @@ jobs:
           sparse-checkout: .github/scripts
       - uses: actions/download-artifact@v4
         with:
-          name: build-${{ matrix.compiler }}
+          name: build-${{ matrix.variant }}
           path: build
       - name: Create Arch package
         run: bash .github/scripts/pack-arch.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: arch-${{ matrix.compiler }}
+          name: arch-${{ matrix.variant }}
           path: artifacts/*.pkg.tar.zst
 
   deb:
-    name: Ubuntu/Debian package (${{ matrix.compiler }})
+    name: Ubuntu/Debian package (${{ matrix.variant }})
     needs: [build]
     runs-on: ubuntu-24.04
-    if: github.event_name != 'workflow_dispatch' || inputs.compiler == 'both' || inputs.compiler == matrix.compiler
+    if: github.event_name != 'workflow_dispatch' || inputs.variant == 'both' || inputs.variant == matrix.variant
     strategy:
       fail-fast: false
       matrix:
-        compiler: [clang, gcc]
+        variant: [amd, generic]
         include:
-          - compiler: clang
-            pkg_name: linux-cachyos-zen2-eevdf
-          - compiler: gcc
+          - variant: amd
             pkg_name: linux-cachyos-zen2-eevdf-gcc
+            target_desc: "AMD Zen 2"
+          - variant: generic
+            pkg_name: linux-cachyos-eevdf-gcc
+            target_desc: "generic x86-64"
     env:
-      COMPILER: ${{ matrix.compiler }}
+      VARIANT: ${{ matrix.variant }}
       PKG_NAME: ${{ matrix.pkg_name }}
+      TARGET_DESC: ${{ matrix.target_desc }}
     steps:
       - name: Install packaging dependencies
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends dpkg-dev zstd
@@ -141,13 +144,13 @@ jobs:
           sparse-checkout: .github/scripts
       - uses: actions/download-artifact@v4
         with:
-          name: build-${{ matrix.compiler }}
+          name: build-${{ matrix.variant }}
           path: build
       - name: Create Debian package
         run: bash .github/scripts/pack-deb.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: deb-${{ matrix.compiler }}
+          name: deb-${{ matrix.variant }}
           path: artifacts/*.deb
 
   release:

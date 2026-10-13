@@ -17,7 +17,7 @@ if ! printf '%s' "${ref}" | grep -Eq '^[A-Za-z0-9._/-]+$'; then
   exit 1
 fi
 
-echo "Building CachyOS/linux ref: ${ref} with ${COMPILER}"
+echo "Building CachyOS/linux ref: ${ref} (${VARIANT})"
 
 git clone --depth=1 --branch="${ref}" "${KERNEL_REPO}" kernel
 git -C kernel log -1 --oneline

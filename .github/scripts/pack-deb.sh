@@ -14,7 +14,7 @@ Section: kernel
 Priority: optional
 Architecture: amd64
 Maintainer: GitHub Actions <noreply@github.com>
-Description: CachyOS Linux kernel with EEVDF for AMD Zen 2 (${COMPILER})
+Description: CachyOS Linux kernel with EEVDF for ${TARGET_DESC}
 EOF
 
 cat > package/DEBIAN/postinst <<EOF
@@ -55,7 +55,7 @@ Priority: optional
 Architecture: amd64
 Depends: ${PKG_NAME}
 Maintainer: GitHub Actions <noreply@github.com>
-Description: Headers and scripts for CachyOS Zen 2 EEVDF kernel (${COMPILER})
+Description: Headers and scripts for CachyOS EEVDF kernel (${TARGET_DESC})
 EOF
 
 dpkg-deb --build --root-owner-group package-headers \

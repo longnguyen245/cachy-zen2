@@ -3,7 +3,7 @@
 set -euo pipefail
 cd kernel
 
-kver="$(make -s ${MAKE_ARGS} kernelrelease)"
+kver="$(make -s kernelrelease)"
 echo "Kernel release: ${kver}"
 
 # ---- /boot + modules -------------------------------------------------------
@@ -14,7 +14,7 @@ cp System.map          "${root}/boot/System.map-${kver}"
 cp .config             "${root}/boot/config-${kver}"
 
 # Install modules under /usr/lib/modules (Arch and merged-usr Debian/Ubuntu)
-make ${MAKE_ARGS} INSTALL_MOD_PATH="${root}/usr" INSTALL_MOD_STRIP=1 modules_install
+make INSTALL_MOD_PATH="${root}/usr" INSTALL_MOD_STRIP=1 modules_install
 rm -f "${root}/usr/lib/modules/${kver}/build" \
       "${root}/usr/lib/modules/${kver}/source"
 depmod -b "${root}/usr" "${kver}"

@@ -30,12 +30,12 @@ license=('GPL-2.0-only')
 options=('!strip' '!debug')
 
 package_${PKG_NAME}() {
-    pkgdesc="CachyOS Linux kernel with EEVDF for AMD Zen 2 (${COMPILER})"
+    pkgdesc="CachyOS Linux kernel with EEVDF for ${TARGET_DESC}"
     cp -a "\${startdir}/pkgroot/." "\${pkgdir}/"
 }
 
 package_${PKG_NAME}-headers() {
-    pkgdesc="Headers and scripts for building modules for the CachyOS Zen 2 EEVDF kernel (${COMPILER})"
+    pkgdesc="Headers and scripts for building modules for the CachyOS EEVDF kernel (${TARGET_DESC})"
     depends=('${PKG_NAME}')
     cp -a "\${startdir}/pkgroot-headers/." "\${pkgdir}/"
 }
