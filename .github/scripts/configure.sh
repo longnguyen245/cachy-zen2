@@ -14,11 +14,28 @@ else
   echo "CPU_CFLAGS=-march=znver2" >> "$GITHUB_ENV"
 fi
 
+# -O3 option only exists with the CachyOS patches. LTO is only worth its
+# icache/codegen overhead when we actually optimise above -O2.
+o3=no
+if grep -rq 'CC_OPTIMIZE_FOR_PERFORMANCE_O3' init/Kconfig; then
+  scripts/config --disable CC_OPTIMIZE_FOR_PERFORMANCE
+  scripts/config --enable CC_OPTIMIZE_FOR_PERFORMANCE_O3
+  o3=yes
+else
+  echo "O3 option not available, keeping default optimisation level"
+fi
+
 if [ "${COMPILER}" = "clang" ]; then
-  # ThinLTO (Full LTO is likely to OOM or time out on hosted runners)
-  scripts/config --disable LTO_NONE
-  scripts/config --disable LTO_CLANG_FULL
-  scripts/config --enable LTO_CLANG_THIN
+  if [ "${o3}" = yes ]; then
+    # ThinLTO (Full LTO is likely to OOM or time out on hosted runners)
+    scripts/config --disable LTO_NONE
+    scripts/config --disable LTO_CLANG_FULL
+    scripts/config --enable LTO_CLANG_THIN
+  else
+    scripts/config --enable LTO_NONE
+    scripts/config --disable LTO_CLANG_THIN
+    scripts/config --disable LTO_CLANG_FULL
+  fi
 else
   # GCC: no Clang-only features. The CachyOS config enables ThinLTO, CFI,
   # AutoFDO, etc.; these depend on CC_IS_CLANG and are dropped by olddefconfig,
@@ -31,12 +48,6 @@ else
   scripts/config --disable PROPELLER_CLANG || true
   # Rust support needs bindgen/libclang; skip it for the GCC variant
   scripts/config --disable RUST || true
-fi
-
-# -O3 option only exists with the CachyOS patches
-if grep -rq 'CC_OPTIMIZE_FOR_PERFORMANCE_O3' init/Kconfig; then
-  scripts/config --disable CC_OPTIMIZE_FOR_PERFORMANCE
-  scripts/config --enable CC_OPTIMIZE_FOR_PERFORMANCE_O3
 fi
 
 # Disable debug info and BTF to save disk space and build time
@@ -55,7 +66,11 @@ grep -qE '^CONFIG_(MZEN2|GENERIC_CPU)=y' .config \
 
 if [ "${COMPILER}" = "clang" ]; then
   grep -q '^CONFIG_CC_IS_CLANG=y' .config || { echo "Kernel is not configured for clang"; exit 1; }
-  grep -q '^CONFIG_LTO_CLANG_THIN=y' .config || { echo "LTO_CLANG_THIN not enabled"; exit 1; }
+  if [ "${o3}" = yes ]; then
+    grep -q '^CONFIG_LTO_CLANG_THIN=y' .config || { echo "LTO_CLANG_THIN not enabled"; exit 1; }
+  else
+    grep -q '^CONFIG_LTO_NONE=y' .config || { echo "LTO should be off without -O3"; exit 1; }
+  fi
 else
   grep -q '^CONFIG_CC_IS_GCC=y' .config || { echo "Kernel is not configured for gcc"; exit 1; }
   if grep -q '^CONFIG_LTO_CLANG' .config; then
