@@ -50,6 +50,18 @@ else
   scripts/config --disable RUST || true
 fi
 
+# Laptop-oriented tuning (Zen2 mobile / Renoir class):
+#  - THP "always" causes latency spikes on large anon mappings; madvise mode
+#    keeps the memory savings for apps that opt in without the stutter.
+#  - Automatic NUMA balancing only pays off on big multi-socket servers.
+#  - EDAC (ECC reporting) and AMD HFI (Zen4+ frequency steering) are dead
+#    weight on Zen2 without ECC.
+scripts/config --disable TRANSPARENT_HUGEPAGE_ALWAYS
+scripts/config --enable  TRANSPARENT_HUGEPAGE_MADVISE
+scripts/config --disable NUMA_BALANCING
+scripts/config --disable EDAC_AMD64 || true
+scripts/config --disable AMD_HFI || true
+
 # Disable debug info and BTF to save disk space and build time
 scripts/config --enable DEBUG_INFO_NONE
 scripts/config --disable DEBUG_INFO_BTF
@@ -80,4 +92,4 @@ fi
 
 # ---- config report ---------------------------------------------------------
 grep -E '^CONFIG_(CC_IS_|CC_VERSION_TEXT|GCC_VERSION|CLANG_VERSION)' .config || true
-grep -E '^CONFIG_(GENERIC_CPU|MZEN|MNATIVE_|X86_NATIVE_CPU|X86_AMD_PSTATE|LTO|CC_OPTIMIZE_FOR_PERFORMANCE)' .config || true
+grep -E '^CONFIG_(GENERIC_CPU|MZEN|MNATIVE_|X86_NATIVE_CPU|X86_AMD_PSTATE|LTO|CC_OPTIMIZE_FOR_PERFORMANCE|TRANSPARENT_HUGEPAGE|NUMA_BALANCING|EDAC_AMD64|AMD_HFI|HZ_)' .config || true
