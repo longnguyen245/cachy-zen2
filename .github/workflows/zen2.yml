@@ -120,7 +120,7 @@ jobs:
       TARGET_DESC: ${{ matrix.target_desc }}
     steps:
       - name: Install packaging dependencies
-        run: pacman -S --noconfirm --needed base-devel git zstd
+        run: pacman -Syu --noconfirm --needed base-devel git zstd
       - uses: actions/checkout@v4
         with:
           sparse-checkout: .github/scripts
