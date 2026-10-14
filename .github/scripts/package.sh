@@ -34,8 +34,14 @@ cp -t "${builddir}" -a scripts include
 cp -t "${builddir}/arch/x86" -a arch/x86/include
 
 # Needed to build external modules when objtool / BTF are enabled
-for f in arch/x86/kernel/asm-offsets.s tools/objtool/objtool tools/bpf/resolve_btfids/resolve_btfids; do
-  if [ -f "$f" ]; then install -Dt "${builddir}/$f" "$f"; fi
+for f in arch/x86/kernel/asm-offsets.s; do
+  if [ -f "$f" ]; then install -Dm644 "${builddir}/$f" "$f"; fi
+done
+
+# Binaries: they must keep the executable bit, out-of-tree module builds
+# (DKMS) exec them straight from the headers dir and fail with EACCES otherwise.
+for f in tools/objtool/objtool tools/bpf/resolve_btfids/resolve_btfids scripts/extract-cert; do
+  if [ -f "$f" ]; then install -Dm755 "${builddir}/$f" "$f"; fi
 done
 
 # Private headers that some out-of-tree modules include
