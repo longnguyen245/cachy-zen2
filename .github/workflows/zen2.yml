@@ -96,6 +96,7 @@ jobs:
             kernel/kernel-root.tar.zst
             kernel/headers-root.tar.zst
           compression-level: 0
+          if-no-files-found: error
 
   arch:
     name: Arch Linux package (${{ matrix.variant }})
@@ -134,6 +135,7 @@ jobs:
         with:
           name: arch-${{ matrix.variant }}
           path: artifacts/*.pkg.tar.zst
+          if-no-files-found: error
 
   deb:
     name: Ubuntu/Debian package (${{ matrix.variant }})
@@ -170,6 +172,7 @@ jobs:
         with:
           name: deb-${{ matrix.variant }}
           path: artifacts/*.deb
+          if-no-files-found: error
 
   release:
     name: GitHub Release
@@ -183,7 +186,16 @@ jobs:
           merge-multiple: true
           path: release
       - name: List release files
-        run: find release -type f -print
+        run: |
+          mkdir -p release
+          find release -type f -print
+          shopt -s nullglob
+          files=(release/*.pkg.tar.zst release/*.deb)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No release artifacts were downloaded" >&2
+            ls -laR release >&2
+            exit 1
+          fi
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
