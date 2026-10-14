@@ -180,14 +180,27 @@ jobs:
     needs: [arch, deb]
     runs-on: ubuntu-24.04
     steps:
+      # Download per artifact name instead of using a pattern: a pattern that
+      # matches nothing makes download-artifact succeed without creating any
+      # files, which previously surfaced as "find: release: No such file".
       - uses: actions/download-artifact@v4
         with:
-          pattern: arch-*,deb-*
-          merge-multiple: true
+          name: arch-amd
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: arch-generic
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: deb-amd
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: deb-generic
           path: release
       - name: List release files
         run: |
-          mkdir -p release
           find release -type f -print
           shopt -s nullglob
           files=(release/*.pkg.tar.zst release/*.deb)
