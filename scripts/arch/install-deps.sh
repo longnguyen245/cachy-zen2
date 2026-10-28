@@ -4,8 +4,8 @@
 
 set -euo pipefail
 
-pacman -Syu --noconfirm
-pacman -Sy --noconfirm --needed \
+pacman -Syu --noconfirm --needed \
   base-devel \
+  git \
   zstd \
   tar
