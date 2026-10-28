@@ -5,7 +5,7 @@
 set -euo pipefail
 
 pacman -Syu --noconfirm
-pacman -S --noconfirm --needed \
+pacman -Sy --noconfirm --needed \
   base-devel \
   zstd \
   tar
